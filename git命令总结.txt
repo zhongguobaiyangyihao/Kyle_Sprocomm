@@ -27,7 +27,7 @@
 	
 12.关联一个远程库
     git remote add origin git@server-name:path/repo-name.git
-	例如：git remote add origin git@github.com:zhongguobaiyangyihao/Kyle.git
+	例如：git remote add origin git@github.com:zhongguobaiyangyihao/Kyle_Sprocomm.git
 13.推送maser分支的所有内容到远程
     1）第一次推送
 	git push -u origin master   //加上了-u参数，Git不但会把本地的master分支内容推送的远程新的master分支，还会把本地的master分支和远程的master分支关联起来，在以后的推送或者拉取时就可以简化命令。
@@ -35,7 +35,7 @@
 	git push origin master
 14.从远程库克隆
     git clone git@server-name:path/repo-name.git
-	例如：git clone git@github.com:zhongguobaiyangyihao/Kyle.git
+	例如：git clone git@github.com:zhongguobaiyangyihao/Kyle_Sprocomm.git
 15.分支的创建和删除
     1）查看分支
 	git branch
