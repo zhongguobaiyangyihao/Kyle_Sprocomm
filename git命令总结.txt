@@ -56,8 +56,8 @@
 	9) 删除远程分支
 	git branch -d -r <name>
 	注：这个只是删除本地的索引，而不是真正删除远程分支的内容，要想真正删除远程分支上的内容，可以这样：
-    git push origin :remote_branch
-    注：冒号前面的空格不能少，相当于把一个空分支push到server上，等于删除该分支。
+	git push origin :remote_branch
+	注：冒号前面的空格不能少，相当于把一个空分支push到server上，等于删除该分支。
 	10)分支重命名
 	git branch -m oldbranchname newbranchname
 	11）推送本地分支到远程分支
