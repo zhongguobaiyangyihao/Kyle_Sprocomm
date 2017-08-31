@@ -37,7 +37,7 @@
     git clone git@server-name:path/repo-name.git
 	例如：git clone git@github.com:zhongguobaiyangyihao/Kyle_Sprocomm.git
 15.分支的创建和删除
-    1）查看分支
+    1）列出本地已经存在的分支，并且在当前分支的前面加“*”号标记
 	git branch
 	2）创建分支
 	git branch <name>
@@ -47,8 +47,16 @@
 	git checkout -b <name>
 	5）合并某分支到当前分支
 	git merge <name>
-	6）删除分支
+	6）删除本地分支
 	git branch -d <name>
+	7）列出远程分支
+	git branch -r
+	8) 列出本地分支和远程分支
+	git branch -a
+	9) 删除远程分支
+	git branch -d -r <name>
+	10)分支重命名
+	git branch -m oldbranchname newbranchname
 16. 推送本地分支到远程分支
     git push origin local_branch:remote_branch
 	注：如果remote_branch不存在则会自动创建分支。
