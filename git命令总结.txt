@@ -49,4 +49,6 @@
 	git merge <name>
 	6）删除分支
 	git branch -d <name>
-	
+16. 推送本地分支到远程分支
+    git push origin local_branch:remote_branch
+	注：如果remote_branch不存在则会自动创建分支。
