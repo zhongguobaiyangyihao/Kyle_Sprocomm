@@ -57,6 +57,6 @@
 	git branch -d -r <name>
 	10)分支重命名
 	git branch -m oldbranchname newbranchname
-16. 推送本地分支到远程分支
-    git push origin local_branch:remote_branch
-	注：如果remote_branch不存在则会自动创建分支。
+	11）推送本地分支到远程分支
+	git push origin local_branch:remote_branch
+	注：如果remote_branch不存在则会自动创建分支；用git branch localbranch，git push origin remotebranch两步，localbranch和remotebranch名字必须相同。
