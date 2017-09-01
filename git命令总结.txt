@@ -47,6 +47,9 @@
 	git checkout -b <name>
 	5）合并某分支到当前分支
 	git merge <name>
+	注：这种模式为Fast forward模式，该种模式下删除分支后会丢掉分支信息。
+	git merge --no-ff -m "merge with no-ff" <name>
+	注：这种模式为普通模式，该种模式合并后历史有分支，能看出来曾经做过合并，而fast forward合并就看不出来曾经做过合并。
 	6）删除本地分支
 	git branch -d <name>
 	7）列出远程分支
@@ -63,3 +66,4 @@
 	11）推送本地分支到远程分支
 	git push origin local_branch:remote_branch
 	注：如果remote_branch不存在则会自动创建分支；用git branch localbranch，git push origin remotebranch两步，localbranch和remotebranch名字必须相同。
+	
