@@ -52,6 +52,9 @@
 	注：这种模式为普通模式，该种模式合并后历史有分支，能看出来曾经做过合并，而fast forward合并就看不出来曾经做过合并。
 	6）删除本地分支
 	git branch -d <name>
+	注：合并完成后，删除分支没有问题。如果尚未完成合并就删除分支会提示还没有被合并，删除失败。此时使用
+	git branch -D <name>
+	强行删除.
 	7）列出远程分支
 	git branch -r
 	8) 列出本地分支和远程分支
@@ -66,4 +69,14 @@
 	11）推送本地分支到远程分支
 	git push origin local_branch:remote_branch
 	注：如果remote_branch不存在则会自动创建分支；用git branch localbranch，git push origin remotebranch两步，localbranch和remotebranch名字必须相同。
+16.工作现场保存和恢复
+    1）保存工作现场
+	git stash
+	2）查看现场保存内容
+	git stash list
+	3）恢复工作现场：
+	一是用git stash apply恢复，但是恢复后，stash内容并不删除，你需要用git stash drop来删除；
+	另一种方式是用git stash pop，恢复的同时把stash内容也删了。
+	4）恢复指定的stash
+	git stash apply stash@{0}
 	
