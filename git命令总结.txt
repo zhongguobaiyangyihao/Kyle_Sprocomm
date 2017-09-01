@@ -79,4 +79,15 @@
 	另一种方式是用git stash pop，恢复的同时把stash内容也删了。
 	4）恢复指定的stash
 	git stash apply stash@{0}
-	
+17.多人协作工作模式
+    1）查看远程库信息
+	git remote -v
+	2）在本地创建和远程分支对应的分支
+	git checkout -b branch-name origin/branch-name
+	注：本地和远程分支的名称最好一致。
+	3）建立本地分支和远程分支的关联
+	git branch --set-upstream branch-name origin/branch-name
+	4）从本地推送分支
+	git push origin branch-name
+	5）推送失败，抓取远程的新提交
+	git pull
