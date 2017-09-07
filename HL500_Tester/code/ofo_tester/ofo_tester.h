@@ -57,6 +57,8 @@ typedef enum
   Test_instruction_enable_gps_calculate   = 5,
   Test_instruction_pwroff_sim868          = 6,
   Test_instruction_monitor_ble            = 7,
+  Test_instruction_pwron_GSM_module       = 8,//HL600สนำร
+  Test_instruction_inquiry_sim868_imei    = 9,
   Test_instruction_motor_after_pwron_test = 0x30,
   Test_instruction_inquiry_lis3dh_id   = 0x31,
   Test_instruction_inquiry_lis3dh_data = 0x32,
@@ -74,7 +76,8 @@ typedef enum
   Test_instruction_lock_state_test             = 0x3E,
   Test_instruction_VBAT_test                   = 0x40,
   Test_instruction_inquiry_sn                  = 0x41,
-  Test_instruction_enter_lpm                   = 0x43
+  Test_instruction_enter_lpm                   = 0x43,
+  Test_instruction_inquiry_ble_mac             = 0x44
 }Test_instructions_t;
 typedef struct
 {

@@ -193,6 +193,8 @@ extern const uint8_t                inquiry_gps_is_enable[];
 void scan_start(void);
 void uart_init(app_uart_comm_params_t comm_params);
 void communicate_with_pc_handler(void);
+void check_key_pin_init(void);
+void check_unlock_lock_pin_init(void);
 extern void communicate_with_nrf51822_handler(void);
 extern void communicate_with_sim868_handler(void);
 extern void communicate_with_monitor_nrf51822_handler(void);
@@ -246,6 +248,7 @@ void uart_event_handle(app_uart_evt_t * p_event)
 void UART_Data_Send(uint8_t * p_data, uint16_t length)
 {
     UART_RX_BUF_CNT = 0;
+    memset(UART_RX_BUF,0,UART_RX_BUF_SIZE);
     for (uint32_t i = 0; i < length; i++)
     {
       app_uart_put(p_data[i]);
@@ -341,17 +344,13 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         }
         case BLE_GAP_EVT_ADV_REPORT:                                  
         {
-            #if 0
-            if((p_gap_evt->params.adv_report.peer_addr.addr[5] == monitor_ble_addr[0])&&
-               (p_gap_evt->params.adv_report.peer_addr.addr[4] == monitor_ble_addr[1])&&
-               (p_gap_evt->params.adv_report.peer_addr.addr[3] == monitor_ble_addr[2])&&
-               (p_gap_evt->params.adv_report.peer_addr.addr[2] == monitor_ble_addr[3])&&
-               (p_gap_evt->params.adv_report.peer_addr.addr[1] == monitor_ble_addr[4])&&
-               (p_gap_evt->params.adv_report.peer_addr.addr[0] == monitor_ble_addr[5])
+            if((p_gap_evt->params.adv_report.peer_addr.addr[0] == monitor_ble_addr[0])&&
+               (p_gap_evt->params.adv_report.peer_addr.addr[1] == monitor_ble_addr[1])&&
+               (p_gap_evt->params.adv_report.peer_addr.addr[2] == monitor_ble_addr[2])&&
+               (p_gap_evt->params.adv_report.peer_addr.addr[3] == monitor_ble_addr[3])&&
+               (p_gap_evt->params.adv_report.peer_addr.addr[4] == monitor_ble_addr[4])&&
+               (p_gap_evt->params.adv_report.peer_addr.addr[5] == monitor_ble_addr[5])
               )
-            #else
-            if(true)
-            #endif
             {
               ble_result.is_received_match_signal = true;
               if(p_gap_evt->params.adv_report.rssi>ble_result.rssi)
@@ -721,11 +720,11 @@ static void key_check_schedule_handler(void)
   static key_check_schedule_t key_check_schedule = key_check_schedule_press;
   static uint16_t                    timeout_cnt  = 0;
   static uint8_t                     check_cnt    = 0;
-//  uint32_t                          start_check_addr = 0;
   switch(key_check_schedule)
   {
     case key_check_schedule_press:
     {
+      check_key_pin_init();
       UART_RX_BUF_CNT = 0;
       memset(UART_RX_BUF,0,UART_RX_BUF_SIZE);
       nrf_gpio_cfg_output(check_key[check_cnt]);
@@ -735,34 +734,14 @@ static void key_check_schedule_handler(void)
     }
     case key_check_schedule_waiting_result:
     {
-      if(timeout_cnt>=1)
-        nrf_gpio_cfg_input(check_key[check_cnt], NRF_GPIO_PIN_NOPULL);
       timeout_cnt++;
-      if((!Flag.is_uart_receive_finish)&&(timeout_cnt<=(2000/CHECK_TIME_TIMEOUT_INTERVAL)))
+      Flag.is_uart_receive_finish = false;
+      if(timeout_cnt<=(2000/CHECK_TIME_TIMEOUT_INTERVAL))
       {
-        break;
-      }
-      if(Flag.is_uart_receive_finish)
-      {
-        Flag.is_uart_receive_finish = false;
-        #if 0
-        for(start_check_addr=(uint32_t)UART_RX_BUF;start_check_addr<((uint32_t)UART_RX_BUF+UART_RX_BUF_SIZE);start_check_addr++)
-        {
-          if((*(char *)start_check_addr)!=0)
-            break;
-        }
-        #endif
         if(check_cnt == 0)
         {
           if(strstr((char *)UART_RX_BUF,"Key1") == NULL)
           {
-            timeout_cnt = 0;
-            key_check_schedule = key_check_schedule_press;
-            check_cnt = 0;
-            Flag.is_key_check_finish = true;
-            Flag.is_key_check = false;
-            key_check_result = 1;//失败
-            error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
             break;
           }
           error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
@@ -771,13 +750,6 @@ static void key_check_schedule_handler(void)
         {
           if(strstr((char *)UART_RX_BUF,"Key2") == NULL)
           {
-            timeout_cnt = 0;
-            key_check_schedule = key_check_schedule_press;
-            check_cnt = 0;
-            Flag.is_key_check_finish = true;
-            Flag.is_key_check = false;
-            key_check_result = 1;//失败
-            error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
             break;
           }
           error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
@@ -786,13 +758,6 @@ static void key_check_schedule_handler(void)
         {
           if(strstr((char *)UART_RX_BUF,"Key3") == NULL)
           {
-            timeout_cnt = 0;
-            key_check_schedule = key_check_schedule_press;
-            check_cnt = 0;
-            Flag.is_key_check_finish = true;
-            Flag.is_key_check = false;
-            key_check_result = 1;//失败
-            error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
             break;
           }
           error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
@@ -801,13 +766,6 @@ static void key_check_schedule_handler(void)
         {
           if(strstr((char *)UART_RX_BUF,"Key4") == NULL)
           {
-            timeout_cnt = 0;
-            key_check_schedule = key_check_schedule_press;
-            check_cnt = 0;
-            Flag.is_key_check_finish = true;
-            Flag.is_key_check = false;
-            key_check_result = 1;//失败
-            error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
             break;
           }
           error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
@@ -816,13 +774,6 @@ static void key_check_schedule_handler(void)
         {
           if(strstr((char *)UART_RX_BUF,"Keyc") == NULL)
           {
-            timeout_cnt = 0;
-            key_check_schedule = key_check_schedule_press;
-            check_cnt = 0;
-            Flag.is_key_check_finish = true;
-            Flag.is_key_check = false;
-            key_check_result = 1;//失败
-            error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
             break;
           }
           error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
@@ -834,6 +785,10 @@ static void key_check_schedule_handler(void)
           Flag.is_key_check_finish = true;
           Flag.is_key_check = false;
           key_check_result = 0;//成功
+          check_key_pin_init();
+          Flag.is_uart_receive_finish = false;//防止对其他操作造成干扰
+          UART_receive_over_judge_cnt = 0;
+          Flag.is_uart_receive_start = false;
         }
       }
       else
@@ -843,6 +798,10 @@ static void key_check_schedule_handler(void)
         Flag.is_key_check = false;
         key_check_result = 1;//失败
         error_reason_storage((uint8_t *)"Timeout",strlen("Timeout"));
+        check_key_pin_init();
+        Flag.is_uart_receive_finish = false;//防止对其他操作造成干扰
+        UART_receive_over_judge_cnt = 0;
+        Flag.is_uart_receive_start = false;
       }
       timeout_cnt = 0;
       key_check_schedule = key_check_schedule_press;
@@ -855,7 +814,7 @@ static void key_check_schedule_handler(void)
 /************************************************************************
 开锁检查进程
 ************************************************************************/
-static void unlock_check_schedule_handler()
+static void unlock_check_schedule_handler(void)
 {
   static unlock_lock_check_schedule_t unlock_lock_check_schedule = unlock_lock_check_schedule_transmit;
   static uint16_t                    timeout_cnt  = 0;
@@ -864,7 +823,6 @@ static void unlock_check_schedule_handler()
   {
     case unlock_lock_check_schedule_transmit:
     {
-      memset(UART_RX_BUF,0,UART_RX_BUF_SIZE);
       UART_Data_Send((uint8_t *)unlock_state_test, 3);
       if(check_cnt == 1)
       {
@@ -876,27 +834,14 @@ static void unlock_check_schedule_handler()
     }
     case unlock_lock_check_schedule_waiting_result:
     {
-      if(timeout_cnt>=1)
-        nrf_gpio_cfg_input(CHECK_UNLOCK_PIN, NRF_GPIO_PIN_NOPULL);
       timeout_cnt++;
-      if((!Flag.is_uart_receive_finish)&&(timeout_cnt<=(2000/CHECK_TIME_TIMEOUT_INTERVAL)))
+      Flag.is_uart_receive_finish = false;
+      if(timeout_cnt<=(2000/CHECK_TIME_TIMEOUT_INTERVAL))
       {
-        break;
-      }
-      if(Flag.is_uart_receive_finish)
-      {
-        Flag.is_uart_receive_finish = false;
         if(check_cnt == 0)
         {
           if(strstr((char *)UART_RX_BUF,"0") == NULL)
           {
-            timeout_cnt = 0;
-            unlock_lock_check_schedule = unlock_lock_check_schedule_transmit;
-            check_cnt = 0;
-            Flag.is_unlock_check_finish = true;
-            Flag.is_unlock_check = false;
-            unlock_check_result = 1;//失败
-            error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
             break;
           }
           error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
@@ -905,13 +850,6 @@ static void unlock_check_schedule_handler()
         {
           if(strstr((char *)UART_RX_BUF,"1") == NULL)
           {
-            timeout_cnt = 0;
-            unlock_lock_check_schedule = unlock_lock_check_schedule_transmit;
-            check_cnt = 0;
-            Flag.is_unlock_check_finish = true;
-            Flag.is_unlock_check = false;
-            unlock_check_result = 1;//失败
-            error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
             break;
           }
           error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
@@ -923,6 +861,10 @@ static void unlock_check_schedule_handler()
           Flag.is_unlock_check_finish = true;
           Flag.is_unlock_check = false;
           unlock_check_result = 0;//成功
+          check_unlock_lock_pin_init();
+          Flag.is_uart_receive_finish = false;//防止对其他操作造成干扰
+          UART_receive_over_judge_cnt = 0;
+          Flag.is_uart_receive_start = false;
         }
       }
       else
@@ -931,8 +873,11 @@ static void unlock_check_schedule_handler()
         Flag.is_unlock_check_finish = true;
         Flag.is_unlock_check = false;
         unlock_check_result = 1;//失败
-        
-        error_reason_storage((uint8_t *)"Timeout",strlen("Timeout"));
+        error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
+        check_unlock_lock_pin_init();
+        Flag.is_uart_receive_finish = false;//防止对其他操作造成干扰
+        UART_receive_over_judge_cnt = 0;
+        Flag.is_uart_receive_start = false;
       }
       timeout_cnt = 0;
       unlock_lock_check_schedule = unlock_lock_check_schedule_transmit;
@@ -945,7 +890,7 @@ static void unlock_check_schedule_handler()
 /************************************************************************
 关锁检查进程
 ************************************************************************/
-static void lock_check_schedule_handler()
+static void lock_check_schedule_handler(void)
 {
   static unlock_lock_check_schedule_t unlock_lock_check_schedule = unlock_lock_check_schedule_transmit;
   static uint16_t                    timeout_cnt  = 0;
@@ -954,7 +899,6 @@ static void lock_check_schedule_handler()
   {
     case unlock_lock_check_schedule_transmit:
     {
-      memset(UART_RX_BUF,0,UART_RX_BUF_SIZE);
       UART_Data_Send((uint8_t *)lock_state_test, 3);
       if(check_cnt == 1)
       {
@@ -966,27 +910,14 @@ static void lock_check_schedule_handler()
     }
     case unlock_lock_check_schedule_waiting_result:
     {
-      if(timeout_cnt>=1)
-        nrf_gpio_cfg_input(CHECK_LOCK_PIN, NRF_GPIO_PIN_NOPULL);
       timeout_cnt++;
-      if((!Flag.is_uart_receive_finish)&&(timeout_cnt<=(2000/CHECK_TIME_TIMEOUT_INTERVAL)))
+      Flag.is_uart_receive_finish = false;
+      if(timeout_cnt<=(2000/CHECK_TIME_TIMEOUT_INTERVAL))
       {
-        break;
-      }
-      if(Flag.is_uart_receive_finish)
-      {
-        Flag.is_uart_receive_finish = false;
         if(check_cnt == 0)
         {
           if(strstr((char *)UART_RX_BUF,"0") == NULL)
           {
-            timeout_cnt = 0;
-            unlock_lock_check_schedule = unlock_lock_check_schedule_transmit;
-            check_cnt = 0;
-            Flag.is_lock_check_finish = true;
-            Flag.is_lock_check = false;
-            lock_check_result = 1;//失败
-            error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
             break;
           }
           error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
@@ -995,13 +926,6 @@ static void lock_check_schedule_handler()
         {
           if(strstr((char *)UART_RX_BUF,"1") == NULL)
           {
-            timeout_cnt = 0;
-            unlock_lock_check_schedule = unlock_lock_check_schedule_transmit;
-            check_cnt = 0;
-            Flag.is_lock_check_finish = true;
-            Flag.is_lock_check = false;
-            lock_check_result = 1;//失败
-            error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
             break;
           }
           error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
@@ -1013,6 +937,10 @@ static void lock_check_schedule_handler()
           Flag.is_lock_check_finish = true;
           Flag.is_lock_check = false;
           lock_check_result = 0;//成功
+          check_unlock_lock_pin_init();
+          Flag.is_uart_receive_finish = false;//防止对其他操作造成干扰
+          UART_receive_over_judge_cnt = 0;
+          Flag.is_uart_receive_start = false;
         }
       }
       else
@@ -1021,8 +949,11 @@ static void lock_check_schedule_handler()
         Flag.is_lock_check_finish = true;
         Flag.is_lock_check = false;
         lock_check_result = 1;//失败
-        
-        error_reason_storage((uint8_t *)"Timeout",strlen("Timeout"));
+        error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
+        check_unlock_lock_pin_init();
+        Flag.is_uart_receive_finish = false;//防止对其他操作造成干扰
+        UART_receive_over_judge_cnt = 0;
+        Flag.is_uart_receive_start = false;
       }
       timeout_cnt = 0;
       unlock_lock_check_schedule = unlock_lock_check_schedule_transmit;
@@ -1044,7 +975,6 @@ static void enable_gps_schedule_handler()
   {
     case enable_gps_check_schedule_transmit:
     {
-      memset(UART_RX_BUF,0,UART_RX_BUF_SIZE);
       if(check_cnt == 0)
       {
         UART_Data_Send((uint8_t *)inquiry_gps_is_enable, 13);
@@ -1322,6 +1252,7 @@ void communicate_with_pc_handler(void)
     case Test_instruction_inquiry_gps_position:
     case Test_instruction_inquiry_sim_imsi:
     case Test_instruction_pwroff_sim868:
+    case Test_instruction_inquiry_sim868_imei:
     {
       Flag.is_uart_sw_to_sim868 = true;
       break;
@@ -1431,7 +1362,6 @@ int main(void)
     ble_stack_scanner_init();
     db_discovery_init();
     location_init();
-    scan_start();
     /****************************************/
     Flag.is_uart_sw_to_nrf51822 = true;
     for (;;)

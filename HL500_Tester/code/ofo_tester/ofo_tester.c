@@ -37,7 +37,8 @@ extern void scan_start(void);
   const uint8_t inquiry_gps_position[] = "AT+CGNSINF\r\n";
   /*获取SIM卡IMSI信息*/
   const uint8_t inquiry_sim_imsi[] = "AT+GET=\"IMSI\"\r\n";
-  
+  const uint8_t inquiry_sim868_imei[] = "AT+GSN\r\n";
+  const uint8_t inquiry_sim868_mac[] = "AT+GET=\"ID\"\r\n";
   const uint8_t sim868_pwroff[] = "AT+PWR0\r\n";
 /*4. 读写片上Flash测试*/
   const uint8_t rw_flash_test[] = {0x54,(uint8_t)Test_instruction_rw_flash_test,0x00};
@@ -136,10 +137,15 @@ void communicate_with_nrf51822_handler(void)
         Flag.is_uart_receive_finish = false;
         if(!strncmp((const char *)UART_RX_BUF,(const char *)ofo_pcba_present,strlen((char *)ofo_pcba_present)))
         {
+          #if 0
           memcpy(return_result_buff,Ready,strlen((char *)Ready));
           return_result_len = strlen((char *)Ready);
           Flag.is_uart_sw_to_pc = true;
           Flag.is_return_result_to_pc = true;
+          #else
+          Test_instruction = Test_instruction_inquiry_ble_mac;
+          Flag.is_uart_sw_to_sim868 = true;
+          #endif
         }
         UART_RX_BUF_CNT = 0;
       }
@@ -336,7 +342,13 @@ void communicate_with_nrf51822_handler(void)
       {
         memcpy(return_result_buff,"OK,",strlen("OK,"));
         return_result_len = strlen("OK,");
-        return_result_len += sprintf((char *)&return_result_buff[return_result_len],"Rssi:%d\r\n",ble_result.rssi);
+        return_result_len += sprintf((char *)&return_result_buff[return_result_len],"Rssi:%d,",ble_result.rssi);
+        return_result_len += sprintf((char *)&return_result_buff[return_result_len],"Mac:");
+        for(uint8_t i=6;i>0;i--)
+        {
+          return_result_len += sprintf((char *)&return_result_buff[return_result_len],"%02X",monitor_ble_addr[i-1]);
+        }
+        return_result_len += sprintf((char *)&return_result_buff[return_result_len],"\r\n");
       }
       else
       {
@@ -998,7 +1010,6 @@ void communicate_with_sim868_handler(void)
       {
         case communicate_schedule_transmit:
         {
-          memset(UART_RX_BUF,0,UART_RX_BUF_SIZE);
           UART_Data_Send((uint8_t *)inquiry_gsm_signal_strength, strlen((char *)inquiry_gsm_signal_strength));
           Flag.is_communicate_start_timeout_calculate = true;
           communicate_time_cnt = 0;
@@ -1085,7 +1096,6 @@ void communicate_with_sim868_handler(void)
       {
         case communicate_schedule_transmit:
         {
-          memset(UART_RX_BUF,0,UART_RX_BUF_SIZE);
           UART_Data_Send((uint8_t *)inquiry_gps_position, strlen((char *)inquiry_gps_position));
           Flag.is_communicate_start_timeout_calculate = true;
           communicate_time_cnt = 0;
@@ -1127,7 +1137,6 @@ void communicate_with_sim868_handler(void)
       {
         case communicate_schedule_transmit:
         {
-          memset(UART_RX_BUF,0,UART_RX_BUF_SIZE);
           UART_Data_Send((uint8_t *)inquiry_sim_imsi, strlen((char *)inquiry_sim_imsi));
           Flag.is_communicate_start_timeout_calculate = true;
           communicate_time_cnt = 0;
@@ -1169,7 +1178,6 @@ void communicate_with_sim868_handler(void)
       {
         case communicate_schedule_transmit:
         {
-          memset(UART_RX_BUF,0,UART_RX_BUF_SIZE);
           error_reason_clear();
           UART_Data_Send((uint8_t *)sim868_pwroff, strlen((char *)sim868_pwroff));
           Flag.is_communicate_start_timeout_calculate = true;
@@ -1205,6 +1213,101 @@ void communicate_with_sim868_handler(void)
           Flag.is_return_result_to_pc = true;
           Flag.is_uart_sw_to_pc = true;
           communicate_schedule = communicate_schedule_transmit;
+          break;
+        }
+      }
+      break;
+    }
+    case Test_instruction_inquiry_sim868_imei:
+    {
+      switch(communicate_schedule)
+      {
+        case communicate_schedule_transmit:
+        {
+          error_reason_clear();
+          UART_Data_Send((uint8_t *)inquiry_sim868_imei, strlen((char *)inquiry_sim868_imei));
+          Flag.is_communicate_start_timeout_calculate = true;
+          communicate_time_cnt = 0;
+          communicate_schedule = communicate_schedule_waiting_result;
+          break;
+        }
+        case communicate_schedule_waiting_result:
+        {
+          if((!Flag.is_uart_receive_finish)&&(communicate_time_cnt<=(2000/CHECK_TIME_TIMEOUT_INTERVAL)))
+          {
+            break;
+          }
+          if(Flag.is_uart_receive_finish)
+          {
+            Flag.is_uart_receive_finish = false;
+            if(strstr((char *)UART_RX_BUF,"OK") != NULL)
+            {
+              pA = (char *)UART_RX_BUF+strlen("\r\n");
+              pB = strchr(pA, '\r');
+              memcpy(return_result_buff,"IMEI : ",strlen("IMEI : "));
+              return_result_len = strlen("IMEI : ");
+              memcpy(&return_result_buff[return_result_len],pA,(pB-pA+2));
+              return_result_len += (pB-pA+2);
+            }
+            else
+            {
+              error_reason_storage(UART_RX_BUF,UART_RX_BUF_CNT);
+              error_reason_upload_packetage();
+            }
+          }
+          else
+          {
+            memcpy(return_result_buff,Timeout,strlen((char *)Timeout));
+            return_result_len = strlen((char *)Timeout);
+          }
+          Flag.is_return_result_to_pc = true;
+          Flag.is_uart_sw_to_pc = true;
+          communicate_schedule = communicate_schedule_transmit;
+          break;
+        }
+      }
+      break;
+    }
+    case Test_instruction_inquiry_ble_mac:
+    {
+      switch(communicate_schedule)
+      {
+        case communicate_schedule_transmit:
+        {
+          UART_Data_Send((uint8_t *)inquiry_sim868_mac, strlen((char *)inquiry_sim868_mac));
+          Flag.is_communicate_start_timeout_calculate = true;
+          communicate_time_cnt = 0;
+          communicate_schedule = communicate_schedule_waiting_result;
+          break;
+        }
+        case communicate_schedule_waiting_result:
+        {
+          Flag.is_uart_receive_finish = false;
+          if(communicate_time_cnt<=(2000/CHECK_TIME_TIMEOUT_INTERVAL))
+          {
+            pA = strstr((char *)UART_RX_BUF,"+GET: ");
+            if((pA != NULL)&&(*(pA+20) == '\r'))
+            {
+              stringToHex((uint8_t *)(pA+7), 2, &monitor_ble_addr[5]);
+              stringToHex((uint8_t *)(pA+9), 2, &monitor_ble_addr[4]);
+              stringToHex((uint8_t *)(pA+11), 2, &monitor_ble_addr[3]);
+              stringToHex((uint8_t *)(pA+13), 2, &monitor_ble_addr[2]);
+              stringToHex((uint8_t *)(pA+15), 2, &monitor_ble_addr[1]);
+              stringToHex((uint8_t *)(pA+17), 2, &monitor_ble_addr[0]);
+              scan_start();
+              memcpy(return_result_buff,Ready,strlen((char *)Ready));
+              return_result_len = strlen((char *)Ready);
+              Flag.is_return_result_to_pc = true;
+              Flag.is_uart_sw_to_pc = true;
+              communicate_schedule = communicate_schedule_transmit;
+            }
+          }
+          else
+          {
+            Flag.is_uart_sw_to_nrf51822 = true;
+            Test_instruction = Test_instruction_check_ofo_pcba;
+            communicate_schedule = communicate_schedule_transmit;
+          }
           break;
         }
       }
